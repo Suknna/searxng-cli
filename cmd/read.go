@@ -23,7 +23,13 @@ var readCmd = &cobra.Command{
 	Short: "Fetch webpage content as clean markdown or text",
 	Long: `Read fetches real webpage content without browser automation.
 Default format is markdown, and markdown output is sanitized to remove noisy HTML tags.
-Authentication inputs from global auth flags must be base64-encoded.`,
+Authentication inputs from global auth flags must be base64-encoded.
+Reference markdown output:
+# Title
+Paragraph one.
+
+Reference text output:
+Title Paragraph one.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		out, err := read.ReadURL(cmd.Context(), args[0], read.Options{

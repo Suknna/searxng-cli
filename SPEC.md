@@ -1,72 +1,115 @@
-# searxng-cli MVP 规格说明（面向 LLM，仅限 Markdown 表格）
+# searxng-cli MVP 规格说明（面向 LLM）
+
 ## 目的
-一个用于 LLM/智能体的 Go（Cobra）CLI：仅通过 SearXNG 进行模糊搜索，输出紧凑的 Markdown 表格。它**不**获取真实的网页内容。
-## 必须在 `--help` 中显示（根命令 + search 命令）
-- 此工具仅用于获取模糊搜索结果（标题/摘要/链接）。
-- 它不下载/解析/渲染网页，也不执行 JS。
-- 要获取真实页面内容：请使用 `agent-browser` 、 `playwright mcp`或其他任意浏览器工具。
-## API（硬性约束）
+一个用于 LLM/智能体的 Go（Cobra）CLI，包含两类能力：
+- `search`：通过 SearXNG 做模糊搜索，输出紧凑 Markdown 表格。
+- `read`：直接读取网页真实内容，输出净化后的 `markdown`（默认）或 `text`。
+
+## `--help` 文案要求
+### 根命令
+- 说明工具支持 `search` 与 `read` 两种流程。
+- 给出推荐顺序：先 `search` 再 `read`。
+- 若用户已提供 URL：直接调用 `read`。
+
+### `search` 命令
+- 说明 `search` 仅返回搜索结果（标题/摘要/链接）。
+- 给出参考输出结构：
+  - `# | title | url | content | template`
+
+### `read` 命令
+- 说明默认输出为 `markdown`，并且会去除杂乱 HTML 标签残留。
+- 说明 `--format text` 输出纯文本。
+- 给出参考输出示例（markdown 与 text）。
+
+## API 约束（search）
 仅使用：
+
 ```bash
-curl 'https://searxng.searxng.orb.local/search?q=searxng&format=json'
+curl 'https://searx.example.org/search?q=searxng&format=json'
+```
+
 实现：
+- `GET {server}/search`
+- 查询参数仅允许：`q=<query>` 与 `format=json`
+- MVP 不使用其他 SearXNG 参数
 
-GET {server}/search
-查询参数：q=<query> 和 format=json
-MVP 中不使用其他 SearXNG 参数/标志。
-测试服务器默认值：https://searxng.searxng.orb.local
+默认服务器：`https://searx.example.org/`
 
-输出（仅 stdout，仅 Markdown 表格）
-始终向 stdout 输出一个 Markdown 表格。没有 JSON 输出模式。
-列（精确）：# | title | url | content | template
-对于每个结果行：
-title、url、content 来自 SearXNG JSON 的 results[]
-template 由 Go 模板渲染（单行；换行符折叠为空格）
-默认 template（单行）：
+## 输出约束
+### search（stdout）
+- 始终输出 Markdown 表格（无 JSON 模式）
+- 列固定：`# | title | url | content | template`
+- `title/url/content` 来自 `results[]`
+- `template` 由 Go 模板渲染（单行）
+- 默认模板：`Title={{.Title}} URL={{.URL}} Content={{.Content}}`
+- 规范化：
+  - 将 `\n`、`\r`、`\t` 替换为空格并折叠重复空格
+  - 将单元格内 `|` 转义为 `\|`
+  - 推荐截断：title 80 / url 120 / content 160 / template 200
 
-<GOTEMPLATE>
-Title={{.Title}} URL={{.URL}} Content={{.Content}}
-规范化规则：
+### read（stdout）
+- 默认：净化后的 `markdown`
+- `--format text`：净化后的纯文本
+- 两种模式都必须剔除杂乱 HTML 标签残留
 
-将所有单元格中的 \n、\r、\t 替换为空格；折叠重复的空格。
-将单元格内的 | 转义为 \|（Markdown 安全）。
-可选截断（推荐）：标题 80 字符，url 120 字符，内容 160 字符，模板 200 字符。
-错误输出到 stderr；非 2xx 状态码或解析失败时退出码为 1。
+### 错误（stderr）
+- 使用结构化 `key=value` 单行格式
+- 失败退出码为 `1`
 
-命令（Cobra）
-searxng-cli search <查询词>
-标志：
---limit int（默认 10；本地输出上限）
---template string（覆盖 Go 模板）
-searxng-cli config init（将默认配置写入用户配置目录）
-searxng-cli config view（打印生效的配置）
-searxng-cli config use-context <名称>（设置当前上下文）
-searxng-cli version
-配置注入（kubectl 风格）
-默认配置路径：~/.config/searxng-cli/config.yml（初始化时创建目录）
+## 命令（Cobra）
+- `searxng-cli search <query>`
+  - `--limit int`（默认 10）
+  - `--template string`
+- `searxng-cli read <url>`
+  - `--format string`（`markdown|text`，默认 `markdown`）
+  - `--timeout duration`
+  - `--respect-robots`
+  - `--max-bytes int`
+  - `--retry int`
+- `searxng-cli config init`
+- `searxng-cli config view`
+- `searxng-cli config use-context <name>`
+- `searxng-cli version`
 
-优先级：命令行标志 > 配置文件 > 默认值
+## 认证注入（search/read 共用）
+- 支持模式：`none | api_key | basic`
+- 支持配置来源：flags / env / config
+- 认证输入必须是 base64 编码，CLI 先解码再发送
 
-架构：
+全局认证 flags：
+- `--auth-mode`
+- `--auth-header`
+- `--auth-api-key`
+- `--auth-username`
+- `--auth-password`
 
-<YAML>
+## 配置
+默认路径：`~/.config/searxng-cli/config.yml`
+
+优先级：命令行标志 > 环境变量 > 配置文件 > 默认值
+
+配置示例：
+
+```yaml
 apiVersion: searxng-cli/v1
 kind: Config
 current-context: default
 contexts:
   default:
-    server: "https://searxng.searxng.orb.local"
+    server: "https://searx.example.org/"
     timeout: "10s"
     limit: 10
     template: "Title={{.Title}} URL={{.URL}} Content={{.Content}}"
-全局标志：
+    auth:
+      mode: "none"
+      api_key_header: "X-API-Key"
+      api_key: ""
+      username: ""
+      password: ""
+```
 
---config string
---context string
---server string
---timeout duration
---verbose
-验收标准
-searxng-cli search "searxng" 调用：GET {server}/search?q=searxng&format=json
-stdout 是一个有效的 Markdown 表格，且仅包含指定的列。
-帮助文本包含“仅用于模糊搜索；获取页面内容请使用 agent-browser/playwright mcp或者其他浏览器工具”的提示。
+## 验收标准
+- `searxng-cli search "searxng"` 调用：`GET {server}/search?q=searxng&format=json`
+- `search` 的 stdout 为有效 Markdown 表格，且仅包含指定列
+- `read` 默认输出净化后的 markdown，`--format text` 输出净化后的纯文本
+- 根命令帮助包含流程说明：先 `search` 再 `read`；已知 URL 直接 `read`

@@ -16,6 +16,15 @@ func TestHelpMentionsScopeForRootAndSearch(t *testing.T) {
 	if !strings.Contains(rootOut, needle) {
 		t.Fatalf("root help missing notice: %s", rootOut)
 	}
+	if strings.Contains(rootOut, "agent-browser") || strings.Contains(rootOut, "playwright") {
+		t.Fatalf("root help should not suggest browser tools: %s", rootOut)
+	}
+	if !strings.Contains(rootOut, "search first, then read") {
+		t.Fatalf("root help missing workflow guidance: %s", rootOut)
+	}
+	if !strings.Contains(rootOut, "If you already have a URL, call read directly") {
+		t.Fatalf("root help missing direct read guidance: %s", rootOut)
+	}
 
 	searchOut, err := executeForTest("search", "--help")
 	if err != nil {
@@ -26,6 +35,9 @@ func TestHelpMentionsScopeForRootAndSearch(t *testing.T) {
 	}
 	if !strings.Contains(searchOut, "key=value") {
 		t.Fatalf("search help missing error format: %s", searchOut)
+	}
+	if !strings.Contains(searchOut, "# | title | url | content | template") {
+		t.Fatalf("search help missing output structure: %s", searchOut)
 	}
 	if strings.Contains(rootOut, "--verbose") {
 		t.Fatalf("root help should not include verbose flag: %s", rootOut)

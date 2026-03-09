@@ -26,9 +26,12 @@ var searchCmd = &cobra.Command{
 	Use:   "search <query>",
 	Short: "Run fuzzy search and print a Markdown table",
 	Long: `This command is only for fuzzy search results (title/summary/link).
-To get real page content, use agent-browser, playwright mcp, or any browser automation tool.
+Use read after search to fetch real content from a selected URL.
 Errors are printed to stderr as key=value fields with stable code and retryable flags.
-Authentication inputs must be base64-encoded; CLI decodes them before sending requests.`,
+Authentication inputs must be base64-encoded; CLI decodes them before sending requests.
+Reference output structure:
+# | title | url | content | template
+| 1 | ... | ... | ... | ... |`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		o := globalOverrides()

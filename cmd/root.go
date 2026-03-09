@@ -32,7 +32,8 @@ var rootCmd = &cobra.Command{
 	Short: "Get fuzzy search results from SearXNG as a Markdown table",
 	Long: `This tool is only for fuzzy search results (title/summary/link).
 It does not download, parse, or render web pages, and it does not execute JS.
-To get real page content, use agent-browser, playwright mcp, or any browser automation tool.`,
+Recommended workflow: search first, then read.
+If you already have a URL, call read directly.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	// Uncomment the following line if your bare application
