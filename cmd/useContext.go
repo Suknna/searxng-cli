@@ -13,8 +13,8 @@ import (
 
 // useContextCmd represents the useContext command
 var useContextCmd = &cobra.Command{
-	Use:   "use-context <名称>",
-	Short: "设置当前上下文",
+	Use:   "use-context <name>",
+	Short: "Set current context",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		path := cfgFile

@@ -14,7 +14,7 @@ import (
 // initCmd represents the init command
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "初始化默认配置文件",
+	Short: "Initialize default config file",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		path := cfgFile
 		if path == "" {

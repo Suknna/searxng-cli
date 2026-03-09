@@ -7,7 +7,7 @@ import (
 )
 
 func TestHelpMentionsScopeForRootAndSearch(t *testing.T) {
-	needle := "模糊搜索结果"
+	needle := "fuzzy search results"
 
 	rootOut, err := executeForTest("--help")
 	if err != nil {
@@ -23,6 +23,20 @@ func TestHelpMentionsScopeForRootAndSearch(t *testing.T) {
 	}
 	if !strings.Contains(searchOut, needle) {
 		t.Fatalf("search help missing notice: %s", searchOut)
+	}
+	if !strings.Contains(searchOut, "key=value") {
+		t.Fatalf("search help missing error format: %s", searchOut)
+	}
+	if strings.Contains(rootOut, "--verbose") {
+		t.Fatalf("root help should not include verbose flag: %s", rootOut)
+	}
+	for _, flag := range []string{"--auth-mode", "--auth-header", "--auth-api-key", "--auth-username", "--auth-password"} {
+		if !strings.Contains(searchOut, flag) {
+			t.Fatalf("search help missing %s: %s", flag, searchOut)
+		}
+	}
+	if !strings.Contains(searchOut, "base64") {
+		t.Fatalf("search help missing base64 auth guidance: %s", searchOut)
 	}
 }
 

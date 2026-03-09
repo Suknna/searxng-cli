@@ -15,7 +15,7 @@ import (
 // viewCmd represents the view command
 var viewCmd = &cobra.Command{
 	Use:   "view",
-	Short: "查看生效配置",
+	Short: "View effective configuration",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		_, cfg, err := config.LoadEffective(globalOverrides())
 		if err != nil {

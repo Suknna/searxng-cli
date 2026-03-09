@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	DefaultServer   = "https://searxng.searxng.orb.local"
+	DefaultServer   = "https://searx.example.org/"
 	DefaultTimeout  = 10 * time.Second
 	DefaultLimit    = 10
 	DefaultTemplate = "Title={{.Title}} URL={{.URL}} Content={{.Content}}"
@@ -22,6 +23,15 @@ type ContextConfig struct {
 	Timeout  string `yaml:"timeout"`
 	Limit    int    `yaml:"limit"`
 	Template string `yaml:"template"`
+	Auth     Auth   `yaml:"auth"`
+}
+
+type Auth struct {
+	Mode      string `yaml:"mode"`
+	APIHeader string `yaml:"api_key_header"`
+	APIKey    string `yaml:"api_key"`
+	Username  string `yaml:"username"`
+	Password  string `yaml:"password"`
 }
 
 type Config struct {
@@ -38,6 +48,11 @@ type Overrides struct {
 	Timeout    time.Duration
 	Limit      *int
 	Template   *string
+	AuthMode   *string
+	AuthHeader *string
+	AuthAPIKey *string
+	AuthUser   *string
+	AuthPass   *string
 }
 
 type Effective struct {
@@ -46,6 +61,11 @@ type Effective struct {
 	Timeout     time.Duration
 	Limit       int
 	Template    string
+	AuthMode    string
+	AuthHeader  string
+	AuthAPIKey  string
+	AuthUser    string
+	AuthPass    string
 }
 
 func DefaultConfig() Config {
@@ -59,6 +79,10 @@ func DefaultConfig() Config {
 				Timeout:  DefaultTimeout.String(),
 				Limit:    DefaultLimit,
 				Template: DefaultTemplate,
+				Auth: Auth{
+					Mode:      "none",
+					APIHeader: "X-API-Key",
+				},
 			},
 		},
 	}
@@ -112,7 +136,14 @@ func LoadEffective(o Overrides) (Effective, Config, error) {
 		Timeout:     parseTimeoutOrDefault(ctx.Timeout),
 		Limit:       fallbackInt(ctx.Limit, DefaultLimit),
 		Template:    fallbackStr(ctx.Template, DefaultTemplate),
+		AuthMode:    fallbackStr(ctx.Auth.Mode, "none"),
+		AuthHeader:  fallbackStr(ctx.Auth.APIHeader, "X-API-Key"),
+		AuthAPIKey:  ctx.Auth.APIKey,
+		AuthUser:    ctx.Auth.Username,
+		AuthPass:    ctx.Auth.Password,
 	}
+
+	applyAuthFromEnv(&eff)
 
 	if o.Server != "" {
 		eff.Server = o.Server
@@ -126,6 +157,21 @@ func LoadEffective(o Overrides) (Effective, Config, error) {
 	if o.Template != nil {
 		eff.Template = *o.Template
 	}
+	if o.AuthMode != nil {
+		eff.AuthMode = *o.AuthMode
+	}
+	if o.AuthHeader != nil {
+		eff.AuthHeader = *o.AuthHeader
+	}
+	if o.AuthAPIKey != nil {
+		eff.AuthAPIKey = *o.AuthAPIKey
+	}
+	if o.AuthUser != nil {
+		eff.AuthUser = *o.AuthUser
+	}
+	if o.AuthPass != nil {
+		eff.AuthPass = *o.AuthPass
+	}
 
 	if loaded.Contexts == nil {
 		loaded.Contexts = map[string]ContextConfig{}
@@ -136,6 +182,13 @@ func LoadEffective(o Overrides) (Effective, Config, error) {
 		Timeout:  eff.Timeout.String(),
 		Limit:    eff.Limit,
 		Template: eff.Template,
+		Auth: Auth{
+			Mode:      eff.AuthMode,
+			APIHeader: eff.AuthHeader,
+			APIKey:    eff.AuthAPIKey,
+			Username:  eff.AuthUser,
+			Password:  eff.AuthPass,
+		},
 	}
 
 	return eff, loaded, nil
@@ -204,4 +257,22 @@ func parseTimeoutOrDefault(raw string) time.Duration {
 		return DefaultTimeout
 	}
 	return v
+}
+
+func applyAuthFromEnv(e *Effective) {
+	if v := strings.TrimSpace(os.Getenv("SEARXNG_AUTH_MODE")); v != "" {
+		e.AuthMode = v
+	}
+	if v := strings.TrimSpace(os.Getenv("SEARXNG_AUTH_HEADER")); v != "" {
+		e.AuthHeader = v
+	}
+	if v := strings.TrimSpace(os.Getenv("SEARXNG_AUTH_API_KEY")); v != "" {
+		e.AuthAPIKey = v
+	}
+	if v := strings.TrimSpace(os.Getenv("SEARXNG_AUTH_USERNAME")); v != "" {
+		e.AuthUser = v
+	}
+	if v := strings.TrimSpace(os.Getenv("SEARXNG_AUTH_PASSWORD")); v != "" {
+		e.AuthPass = v
+	}
 }

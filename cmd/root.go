@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"searxng-cli/internal/apperr"
 	"searxng-cli/internal/config"
 
 	"github.com/spf13/cobra"
@@ -17,17 +18,21 @@ var (
 	flagContext  string
 	flagServer   string
 	flagTimeout  time.Duration
-	flagVerbose  bool
+	flagAuthMode *string
+	flagAuthHdr  *string
+	flagAuthKey  *string
+	flagAuthUser *string
+	flagAuthPass *string
 	buildVersion = "dev"
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "searxng-cli",
-	Short: "通过 SearXNG 获取模糊搜索结果并输出 Markdown 表格",
-	Long: `此工具仅用于获取模糊搜索结果（标题/摘要/链接）。
-它不下载/解析/渲染网页，也不执行 JS。
-要获取真实页面内容：请使用 agent-browser、playwright mcp 或其他任意浏览器工具。`,
+	Short: "Get fuzzy search results from SearXNG as a Markdown table",
+	Long: `This tool is only for fuzzy search results (title/summary/link).
+It does not download, parse, or render web pages, and it does not execute JS.
+To get real page content, use agent-browser, playwright mcp, or any browser automation tool.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	// Uncomment the following line if your bare application
@@ -40,17 +45,26 @@ var rootCmd = &cobra.Command{
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
-		_, _ = os.Stderr.WriteString(err.Error() + "\n")
+		line := renderCLIError(err)
+		_, _ = os.Stderr.WriteString(line + "\n")
 		os.Exit(1)
 	}
 }
 
+func renderCLIError(err error) string {
+	return apperr.RenderKV(apperr.FromError(err))
+}
+
 func init() {
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "配置文件路径")
-	rootCmd.PersistentFlags().StringVar(&flagContext, "context", "", "覆盖当前上下文")
-	rootCmd.PersistentFlags().StringVar(&flagServer, "server", "", "覆盖 server")
-	rootCmd.PersistentFlags().DurationVar(&flagTimeout, "timeout", 0, "覆盖超时时间，例如 10s")
-	rootCmd.PersistentFlags().BoolVar(&flagVerbose, "verbose", false, "输出调试信息")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "Path to config file")
+	rootCmd.PersistentFlags().StringVar(&flagContext, "context", "", "Override active context")
+	rootCmd.PersistentFlags().StringVar(&flagServer, "server", "", "Override server")
+	rootCmd.PersistentFlags().DurationVar(&flagTimeout, "timeout", 0, "Override timeout (for example 10s)")
+	flagAuthMode = rootCmd.PersistentFlags().String("auth-mode", "", "Auth mode: none|api_key|basic")
+	flagAuthHdr = rootCmd.PersistentFlags().String("auth-header", "", "Auth header name for api_key mode")
+	flagAuthKey = rootCmd.PersistentFlags().String("auth-api-key", "", "Base64 API key value")
+	flagAuthUser = rootCmd.PersistentFlags().String("auth-username", "", "Base64 username for basic mode")
+	flagAuthPass = rootCmd.PersistentFlags().String("auth-password", "", "Base64 password for basic mode")
 }
 
 func globalOverrides() config.Overrides {
@@ -59,5 +73,17 @@ func globalOverrides() config.Overrides {
 		Context:    flagContext,
 		Server:     flagServer,
 		Timeout:    flagTimeout,
+		AuthMode:   strPtrIfNotEmpty(flagAuthMode),
+		AuthHeader: strPtrIfNotEmpty(flagAuthHdr),
+		AuthAPIKey: strPtrIfNotEmpty(flagAuthKey),
+		AuthUser:   strPtrIfNotEmpty(flagAuthUser),
+		AuthPass:   strPtrIfNotEmpty(flagAuthPass),
 	}
+}
+
+func strPtrIfNotEmpty(v *string) *string {
+	if v == nil || *v == "" {
+		return nil
+	}
+	return v
 }

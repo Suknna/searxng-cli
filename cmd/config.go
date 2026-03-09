@@ -8,7 +8,7 @@ import "github.com/spf13/cobra"
 // configCmd represents the config command
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "管理 searxng-cli 配置",
+	Short: "Manage searxng-cli configuration",
 }
 
 func init() {

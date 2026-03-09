@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"strings"
 
+	"searxng-cli/internal/apperr"
+	"searxng-cli/internal/auth"
 	"searxng-cli/internal/config"
 	"searxng-cli/internal/render"
 	"searxng-cli/internal/search"
@@ -21,10 +23,12 @@ var (
 
 // searchCmd represents the search command
 var searchCmd = &cobra.Command{
-	Use:   "search <查询词>",
-	Short: "执行模糊搜索并输出 Markdown 表格",
-	Long: `此命令仅用于模糊搜索结果（标题/摘要/链接）。
-要获取真实页面内容：请使用 agent-browser、playwright mcp 或其他任意浏览器工具。`,
+	Use:   "search <query>",
+	Short: "Run fuzzy search and print a Markdown table",
+	Long: `This command is only for fuzzy search results (title/summary/link).
+To get real page content, use agent-browser, playwright mcp, or any browser automation tool.
+Errors are printed to stderr as key=value fields with stable code and retryable flags.
+Authentication inputs must be base64-encoded; CLI decodes them before sending requests.`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		o := globalOverrides()
@@ -37,21 +41,28 @@ var searchCmd = &cobra.Command{
 
 		eff, _, err := config.LoadEffective(o)
 		if err != nil {
-			return err
-		}
-		if flagVerbose {
-			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "server=%s context=%s timeout=%s\n", eff.Server, eff.ContextName, eff.Timeout)
+			return &apperr.ConfigError{Err: err}
 		}
 
 		query := strings.Join(args, " ")
-		results, err := search.Fetch(cmd.Context(), eff.Server, query, eff.Timeout)
+		results, err := search.Fetch(cmd.Context(), eff.Server, query, eff.Timeout, auth.Options{
+			Mode:         eff.AuthMode,
+			APIKeyHeader: eff.AuthHeader,
+			APIKey:       eff.AuthAPIKey,
+			Username:     eff.AuthUser,
+			Password:     eff.AuthPass,
+		})
 		if err != nil {
-			return err
+			return apperr.Annotate(err, map[string]string{
+				"server":  eff.Server,
+				"query":   query,
+				"timeout": eff.Timeout.String(),
+			})
 		}
 
 		table, err := render.MarkdownTable(results, eff.Template, eff.Limit)
 		if err != nil {
-			return err
+			return &apperr.TemplateError{Err: err}
 		}
 
 		_, err = fmt.Fprint(cmd.OutOrStdout(), table)
@@ -61,6 +72,6 @@ var searchCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(searchCmd)
-	searchCmd.Flags().IntVar(&searchLimit, "limit", config.DefaultLimit, "本地输出上限")
-	searchCmd.Flags().StringVar(&searchTemplate, "template", config.DefaultTemplate, "覆盖模板")
+	searchCmd.Flags().IntVar(&searchLimit, "limit", config.DefaultLimit, "Local output limit")
+	searchCmd.Flags().StringVar(&searchTemplate, "template", config.DefaultTemplate, "Override row template")
 }

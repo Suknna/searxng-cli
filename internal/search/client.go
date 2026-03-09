@@ -8,6 +8,9 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"searxng-cli/internal/apperr"
+	"searxng-cli/internal/auth"
 )
 
 type Result struct {
@@ -20,7 +23,7 @@ type response struct {
 	Results []Result `json:"results"`
 }
 
-func Fetch(ctx context.Context, server, query string, timeout time.Duration) ([]Result, error) {
+func Fetch(ctx context.Context, server, query string, timeout time.Duration, authOpts auth.Options) ([]Result, error) {
 	if strings.TrimSpace(query) == "" {
 		return nil, fmt.Errorf("query is empty")
 	}
@@ -41,6 +44,9 @@ func Fetch(ctx context.Context, server, query string, timeout time.Duration) ([]
 	if err != nil {
 		return nil, err
 	}
+	if err := auth.Apply(req, authOpts); err != nil {
+		return nil, err
+	}
 
 	resp, err := hc.Do(req)
 	if err != nil {
@@ -49,12 +55,12 @@ func Fetch(ctx context.Context, server, query string, timeout time.Duration) ([]
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, fmt.Errorf("non-2xx response: %s", resp.Status)
+		return nil, &apperr.HTTPStatusError{StatusCode: resp.StatusCode, Status: resp.Status}
 	}
 
 	var payload response
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return nil, fmt.Errorf("decode response: %w", err)
+		return nil, &apperr.DecodeError{Err: err}
 	}
 	return payload.Results, nil
 }

@@ -12,7 +12,7 @@ import (
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "显示版本",
+	Short: "Show version",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(buildVersion)
 	},
