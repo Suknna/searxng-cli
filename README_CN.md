@@ -20,6 +20,19 @@
 - **选项 A：** 自行部署 SearXNG ([官方文档](https://docs.searxng.org/admin/installation.html))
 - **选项 B：** 使用公开/社区实例（例如 `https://search.sapti.me`）
 
+## 给人类的安装方式
+
+把下面这段提示词直接发给你的 LLM Agent（Claude Code、OpenCode、Codex、Cursor 等）：
+
+```text
+Install and configure searxng-cli by following the instructions here:
+https://raw.githubusercontent.com/Suknna/searxng-cli/refs/heads/main/install.md
+```
+
+当然你也可以自己读 `install.md` 手动安装，但更建议交给 Agent，手工改配置很容易输错。
+
+如果你有定制化需求（非默认路径、企业策略、定制认证流程），再切换为手动安装，并基于 `install.md` 的命令进行调整。
+
 ## 快速开始
 
 ### 1. 安装

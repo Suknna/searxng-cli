@@ -20,6 +20,19 @@ You need access to a SearXNG instance:
 - **Option A:** Self-deploy SearXNG ([official docs](https://docs.searxng.org/admin/installation.html))
 - **Option B:** Use a public/community instance (e.g., `https://search.sapti.me`)
 
+## Installation For Humans
+
+Copy and paste this prompt to your LLM agent (Claude Code, OpenCode, Codex, Cursor, etc.):
+
+```text
+Install and configure searxng-cli by following the instructions here:
+https://raw.githubusercontent.com/Suknna/searxng-cli/refs/heads/main/install.md
+```
+
+Or read `install.md` and do it manually, but seriously, let an agent do it. Humans fat-finger configs.
+
+If you need custom behavior (non-default paths, enterprise policy, custom auth flow), switch to manual installation and adapt commands from `install.md`.
+
 ## Quick Start
 
 ### 1. Install
